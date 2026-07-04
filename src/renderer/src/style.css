@@ -1,0 +1,1930 @@
+:root {
+  --bg-top: #f2f9ff;
+  --bg-bottom: #e3f0ff;
+  --surface: #ffffff;
+  --surface-2: #f6fbff;
+  --surface-3: #eef6ff;
+  --water-light: #7cc4ff;
+  --water: #3b9eff;
+  --water-deep: #1f7fe0;
+  --orb-empty: #e6f1fb;
+  --orb-ring: #cfe6fb;
+  --text: #143a5e;
+  /* 次要文字:调深到 WCAG AA(白底≥4.5:1),原 #5f7d9e 只有 ~4.0 偏浅 */
+  --text-muted: #4d6884;
+  --scrim: rgba(255, 255, 255, 0.85);
+  --guide-card-bg: linear-gradient(160deg, rgba(242, 249, 255, 0.96), rgba(227, 240, 255, 0.96));
+  /* 水球数字描边:浅色模式白色光晕(深字压在深蓝水面上要可读);深色模式换柔和暗影,不发虚 */
+  --orb-text-shadow: 0 0 4px rgba(255, 255, 255, 0.7), 0 1px 2px rgba(255, 255, 255, 0.5);
+  /* 危险色:调深到白底≥4.5:1(告警红字 + 危险按钮白字都受益);原 #e5484d 白底只有 ~3.9 */
+  --danger: #d13438;
+  --shadow-btn: 0 6px 16px rgba(59, 158, 255, 0.35);
+  --shadow-btn-hover: 0 10px 22px rgba(59, 158, 255, 0.45);
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+/* 跟随系统深色:整套语义变量换深色值,窗口/卡片/输入自动适配,夜里不刺眼 */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-top: #141d26;
+    --bg-bottom: #0d141b;
+    --surface: #1e2935;
+    --surface-2: #26313d;
+    --surface-3: #2c3948;
+    --water-deep: #5fb0ff;
+    --orb-empty: #1d2b3a;
+    --orb-ring: #3a4f64;
+    /* 两级文字(iOS/Material 标准):主文字近白高对比,次要文字(说明/分区标题)清晰的中灰 */
+    --text: #eef3f9;
+    --text-muted: #9fb4ca;
+    --scrim: rgba(6, 10, 14, 0.72);
+    --guide-card-bg: linear-gradient(160deg, rgba(30, 41, 53, 0.98), rgba(20, 28, 37, 0.98));
+    --orb-text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --danger: #ff5a5f;
+  }
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+/* 鼠标点按不显焦点框,但键盘导航(:focus-visible)必须显 —— a11y:不能整体抹掉焦点,否则键盘用户看不到焦点在哪 */
+button:focus {
+  outline: none;
+}
+button:focus-visible {
+  outline: 2px solid var(--water-deep);
+  outline-offset: 2px;
+}
+
+html,
+body {
+  height: 100%;
+  /* 让浏览器原生控件(数字步进箭头、时间选择器、滚动条)也跟随深/浅色,不在深色里露白 */
+  color-scheme: light dark;
+  -webkit-user-select: none;
+  user-select: none;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
+    'Microsoft YaHei', sans-serif;
+  color: var(--text);
+  background: linear-gradient(160deg, var(--bg-top), var(--bg-bottom));
+  overflow: hidden;
+}
+
+#app {
+  height: 100%;
+}
+
+.panel {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 14px 18px 14px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  /* 关掉 macOS 橡皮筋回弹:内容放得下就不晃,真需要滚的(设置页)照样能滚 */
+  overscroll-behavior: contain;
+}
+/* 主页顶栏吸顶:内容展开需要滚动时,日期/记录/设置/关闭始终留在顶部,不随内容滑走 */
+#view-home .panel {
+  padding-top: 0;
+}
+.head {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  /* 全宽:被 panel 的 align-items:center 居中后正好铺满窗口两侧,消除右侧那条分界缝 */
+  width: calc(100% + 36px);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 14px 18px 8px;
+  margin-bottom: 4px;
+  /* 不透明实心(参考 macOS 设置的工具栏):内容滚动时干净地藏到顶栏后面,不透着「划过眼前」 */
+  background: var(--bg-top);
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.25s var(--ease);
+}
+/* 顶部无缝(顶栏色与背景一致);下滑才淡入一条极细分隔线 */
+.head.scrolled {
+  border-bottom-color: rgba(31, 90, 150, 0.1);
+}
+
+.title {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.date {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.orb-wrap {
+  position: relative;
+  width: 150px;
+  height: 150px;
+  margin: 4px 0 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.orb {
+  width: 150px;
+  height: 150px;
+  display: block;
+}
+
+.orb-bg {
+  fill: var(--orb-empty);
+}
+
+.orb-ring {
+  fill: none;
+  stroke: var(--orb-ring);
+  stroke-width: 4;
+  transition: stroke 0.4s var(--ease);
+}
+
+.wave-back {
+  fill: var(--water-light);
+  opacity: 0.55;
+}
+
+.wave-front {
+  fill: url(#waterGrad);
+  opacity: 0.92;
+}
+
+.bubble {
+  fill: #ffffff;
+  opacity: 0.7;
+}
+
+.orb-text {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  /* 描边按模式走变量:浅色白光晕保证深字在深蓝水面可读,深色换柔和暗影不发虚 */
+  text-shadow: var(--orb-text-shadow);
+}
+
+.amount {
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.amount .unit {
+  font-size: 13px;
+  font-weight: 600;
+  margin-left: 2px;
+  /* 用主文字色的淡化版,而不是 muted 灰:水位升高后「ml」压在蓝色水面上,深色下 muted 灰会糊、看不清 */
+  color: var(--text);
+  opacity: 0.68;
+}
+
+.goal {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 5px;
+}
+
+.percent {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--water-deep);
+  margin-top: 2px;
+}
+
+.panel.reached .orb-ring {
+  stroke: var(--water);
+}
+
+.add-btn {
+  width: 100%;
+  border: none;
+  border-radius: 13px;
+  padding: 12px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, var(--water-light), var(--water));
+  box-shadow: var(--shadow-btn);
+  cursor: pointer;
+  transition: box-shadow 0.2s var(--ease), filter 0.15s var(--ease);
+  will-change: transform;
+}
+
+.add-btn:hover {
+  box-shadow: var(--shadow-btn-hover);
+  filter: brightness(1.04);
+}
+
+.add-btn:active {
+  filter: brightness(0.97);
+}
+
+.add-btn .add-plus {
+  font-size: 16px;
+}
+
+.add-btn .add-sub {
+  font-size: 11px;
+  opacity: 0.85;
+  font-weight: 600;
+}
+
+.undo-btn {
+  margin-top: 9px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 5px 9px;
+  border-radius: 8px;
+  transition: color 0.15s var(--ease), background 0.15s var(--ease);
+}
+
+.undo-btn:hover {
+  color: var(--text);
+  background: rgba(95, 125, 158, 0.1);
+}
+
+.remind {
+  width: 100%;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--orb-ring);
+}
+.remind-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.remind-label {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.remind-test {
+  border: none;
+  background: transparent;
+  color: var(--water-deep);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 6px;
+  transition: background 0.15s var(--ease);
+}
+.remind-test:hover {
+  background: rgba(59, 158, 255, 0.12);
+}
+.remind-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.chip {
+  border: 1px solid var(--orb-ring);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 12px;
+  padding: 6px 11px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: border-color 0.15s var(--ease), color 0.15s var(--ease),
+    background 0.15s var(--ease);
+}
+.chip:hover {
+  border-color: var(--water-light);
+  color: var(--text);
+}
+.chip.active {
+  background: var(--water);
+  border-color: var(--water);
+  color: #fff;
+  font-weight: 600;
+}
+/* 外观三选(分段控件):跟随系统 / 浅色 / 深色 */
+.seg {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+  padding: 3px;
+  background: var(--surface-3);
+  border-radius: 10px;
+}
+.seg-btn {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  padding: 6px 0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s var(--ease), color 0.15s var(--ease);
+}
+.seg-btn:hover {
+  color: var(--text);
+}
+.seg-btn.active {
+  background: var(--water);
+  color: #fff;
+  font-weight: 600;
+}
+.remind-custom {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+.remind-custom.hidden {
+  display: none;
+}
+.remind-custom input {
+  flex: 1;
+  height: 32px;
+  border: 1px solid var(--orb-ring);
+  border-radius: 8px;
+  padding: 0 10px;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--surface);
+  outline: none;
+  transition: border-color 0.15s var(--ease), box-shadow 0.15s var(--ease);
+}
+.remind-custom input:focus {
+  border-color: var(--water);
+  box-shadow: 0 0 0 3px rgba(124, 196, 255, 0.4);
+}
+/* 「立即提醒一下」按钮 */
+.remind-now {
+  width: 100%;
+  margin-top: 10px;
+  border: 1px solid var(--water);
+  background: rgba(59, 158, 255, 0.08);
+  color: var(--water-deep);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 9px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s var(--ease);
+}
+.remind-now:hover {
+  background: rgba(59, 158, 255, 0.16);
+}
+/* 用 class 而非 :disabled:保留指针事件,暂停时 hover 能看到 title 提示,点击由 JS 守卫拦住 */
+.remind-now.is-off {
+  opacity: 0.4;
+  cursor: not-allowed;
+  background: rgba(59, 158, 255, 0.05);
+}
+.remind-now.is-off:hover {
+  background: rgba(59, 158, 255, 0.05);
+}
+.chip-apply {
+  background: var(--water);
+  border-color: var(--water);
+  color: #fff;
+}
+.remind-pause {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid var(--water);
+  background: rgba(59, 158, 255, 0.08);
+  color: var(--water-deep);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 11px;
+  border-radius: 999px;
+  transition: background 0.15s var(--ease), color 0.15s var(--ease),
+    border-color 0.15s var(--ease);
+}
+.remind-pause .rp-ico {
+  font-size: 9px;
+  line-height: 1;
+}
+.remind-pause:hover {
+  background: rgba(59, 158, 255, 0.16);
+}
+/* 已暂停:橙色实心,一眼看出提醒被停了 */
+.remind-pause.paused {
+  border-color: #e08a2e;
+  background: #ef9d3a;
+  color: #fff;
+}
+.remind-pause.paused:hover {
+  background: #e6912c;
+}
+.custom-unit {
+  align-self: center;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+/* 临时暂停自成一行,和上面的「提醒间隔」用分隔线隔开,不再让暂停按钮挨着间隔标题引起混淆 */
+.pause-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--orb-ring);
+}
+.pause-bar-label {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+/* 暂停时长选项:橙色调独立色块 + 标题,和上面蓝色的提醒间隔 chip 明显区分,避免两排按钮分不清谁是谁 */
+.pause-opts {
+  margin: 8px 0 2px;
+  padding: 8px 10px;
+  background: rgba(239, 157, 58, 0.1);
+  border: 1px solid rgba(239, 157, 58, 0.32);
+  border-radius: 10px;
+}
+.pause-opts.hidden {
+  display: none;
+}
+.pause-opts-label {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  color: #b06a1e;
+  margin-bottom: 6px;
+}
+.pause-opts-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.pause-chip {
+  border-color: rgba(239, 157, 58, 0.5);
+}
+.pause-chip:hover {
+  border-color: #ef9d3a;
+  color: #b06a1e;
+}
+/* 按体重估算目标的展开区 */
+.goal-est {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+}
+.goal-est.hidden {
+  display: none;
+}
+.sex-row {
+  display: flex;
+  gap: 6px;
+}
+.sex-chip {
+  padding: 5px 16px;
+}
+.est-input-row {
+  display: flex;
+  gap: 6px;
+}
+.est-input-row input {
+  flex: 1;
+  height: 32px;
+  border: 1px solid var(--orb-ring);
+  border-radius: 8px;
+  padding: 0 10px;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--surface-3);
+  outline: none;
+  transition: border-color 0.15s var(--ease), box-shadow 0.15s var(--ease);
+}
+.est-input-row input:focus {
+  border-color: var(--water);
+  box-shadow: 0 0 0 3px rgba(124, 196, 255, 0.4);
+}
+/* 文字链接式小按钮(如「按体重估算目标」) */
+.link-btn {
+  align-self: flex-start;
+  border: none;
+  background: transparent;
+  color: var(--water-deep);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 2px 0;
+  margin-top: 2px;
+}
+.link-btn:hover {
+  text-decoration: underline;
+}
+.panel {
+  position: relative;
+}
+.toast {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 14px;
+  background: rgba(20, 58, 94, 0.94);
+  color: #fff;
+  font-size: 12px;
+  line-height: 1.4;
+  padding: 9px 12px;
+  border-radius: 10px;
+  text-align: center;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+  z-index: 10;
+  transition: opacity 0.25s var(--ease), transform 0.25s var(--ease);
+}
+.toast.hidden {
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
+}
+@keyframes toastPop {
+  0% {
+    transform: translateY(6px) scale(0.97);
+    opacity: 0.35;
+  }
+  100% {
+    transform: none;
+    opacity: 1;
+  }
+}
+.toast.pop {
+  animation: toastPop 0.22s var(--ease);
+}
+@media (prefers-reduced-motion: reduce) {
+  .toast.pop {
+    animation: none;
+  }
+}
+
+/* ---------- 快捷喝水量 ---------- */
+.quick-amts {
+  display: flex;
+  gap: 6px;
+  width: 100%;
+  margin-top: 8px;
+}
+.amt {
+  flex: 1;
+  border: 1px solid var(--orb-ring);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 12px;
+  padding: 7px 0;
+  border-radius: 9px;
+  cursor: pointer;
+  transition: border-color 0.15s var(--ease), color 0.15s var(--ease),
+    background 0.15s var(--ease), transform 0.1s var(--ease);
+}
+.amt:hover {
+  border-color: var(--water-light);
+  color: var(--text);
+  background: var(--surface-2);
+}
+.amt:active {
+  transform: scale(0.94);
+  background: var(--surface-3);
+}
+.amt-custom {
+  display: flex;
+  gap: 6px;
+  width: 100%;
+  margin-top: 8px;
+}
+.amt-custom.hidden {
+  display: none;
+}
+.amt-custom input {
+  flex: 1;
+  height: 32px;
+  border: 1px solid var(--orb-ring);
+  border-radius: 8px;
+  padding: 0 10px;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--surface);
+  outline: none;
+  transition: border-color 0.15s var(--ease), box-shadow 0.15s var(--ease);
+}
+.amt-custom input:focus {
+  border-color: var(--water);
+  box-shadow: 0 0 0 3px rgba(124, 196, 255, 0.4);
+}
+
+/* ---------- 今日记录 ---------- */
+.log-total {
+  width: 100%;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+.log-list {
+  width: 100%;
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.log-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  background: var(--surface);
+  border: 1px solid var(--orb-ring);
+  border-radius: 10px;
+  animation: logIn 0.32s var(--ease-spring) both;
+}
+@keyframes logIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.log-time {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  min-width: 40px;
+}
+.log-ml {
+  flex: 1;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--water-deep);
+}
+.log-ml small {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-left: 1px;
+}
+.log-del {
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 18px;
+  line-height: 1;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s var(--ease), color 0.15s var(--ease);
+}
+.log-del:hover {
+  background: rgba(229, 72, 77, 0.12);
+  color: var(--danger);
+}
+.log-empty {
+  width: 100%;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+  padding: 30px 0;
+}
+
+/* ---------- 退出按钮 ---------- */
+.quit-btn {
+  margin-top: 3px;
+  border: 1px solid var(--orb-ring);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 13px;
+  padding: 6px;
+  border-radius: 11px;
+  cursor: pointer;
+  transition: border-color 0.15s var(--ease), color 0.15s var(--ease),
+    background 0.15s var(--ease);
+}
+/* 数据导出/导入并排一行 */
+.data-row {
+  display: flex;
+  gap: 6px;
+}
+.data-btn {
+  flex: 1;
+}
+/* 普通工具按钮(导出/导入/复位):hover 走中性,不再一律变红,把红色留给真正的危险操作 */
+.quit-btn:hover {
+  border-color: var(--water-light);
+  color: var(--text);
+  background: var(--surface-2);
+}
+/* 「使用引导」非危险操作,hover 用蓝色(声明在 quit-btn:hover 之后以覆盖) */
+.help-btn:hover {
+  border-color: var(--water);
+  color: var(--water-deep);
+  background: rgba(59, 158, 255, 0.08);
+}
+/* 危险操作(恢复默认/退出):红色区分,一眼看出该谨慎;声明在最后覆盖普通 hover */
+.quit-btn.danger {
+  color: var(--danger);
+  border-color: rgba(229, 72, 77, 0.4);
+}
+.quit-btn.danger:hover {
+  border-color: var(--danger);
+  color: #fff;
+  background: var(--danger);
+}
+
+/* ---------- 水球下方:目标 / 百分比 / 进度提示 ---------- */
+.orb-meta {
+  width: 100%;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 10px;
+  margin: -6px 0 2px;
+}
+.meta-goal {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.meta-percent {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--water-deep);
+  font-variant-numeric: tabular-nums;
+}
+.progress-hint {
+  width: 100%;
+  text-align: center;
+  font-size: 12px;
+  color: var(--water-deep);
+  margin-bottom: 8px;
+}
+
+/* 快捷量按钮里的 ml */
+.amt small {
+  font-size: 9px;
+  opacity: 0.6;
+  margin-left: 1px;
+}
+
+/* 拖拽:原生 app-region(像 Safari/Chrome,点顶部直接拖),顶部空白可拖,按钮不拖 */
+.head,
+.sub-head {
+  -webkit-app-region: drag;
+}
+.head-actions,
+.icon-btn,
+.sub-head .back-btn,
+.range-toggle button {
+  -webkit-app-region: no-drag;
+}
+/* 面板滚动条:常显一条细滑条,给用户「内容能往下滑」的明确信号(内容不超出时浏览器自动不画) */
+.panel::-webkit-scrollbar {
+  width: 8px;
+}
+.panel::-webkit-scrollbar-thumb {
+  background: rgba(95, 125, 158, 0.35);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+.panel::-webkit-scrollbar-thumb:hover {
+  background: rgba(95, 125, 158, 0.6);
+  background-clip: content-box;
+}
+.panel::-webkit-scrollbar-track {
+  background: transparent;
+}
+/* 记录页分区卡片 */
+.rec-card {
+  width: 100%;
+  background: var(--orb-empty);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 10px;
+  border: 1px solid transparent;
+  transition: background 0.2s var(--ease), border-color 0.2s var(--ease);
+}
+.rec-card:last-child {
+  margin-bottom: 0;
+}
+/* 查看过去某天时,明细卡换个底色+描边,一眼看出「不是今天」 */
+.rec-card.viewing-past {
+  /* 不再用不同背景区分「看过去」:靠日期标题 +「返回今天」+ 日历选中态表达,两块背景保持一致 */
+  background: var(--orb-empty);
+  border-color: transparent;
+}
+
+/* ---------- 记录与统计合并页 ---------- */
+.rec-title {
+  width: 100%;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 2px 0 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+/* 明细卡头部:日期醒目 + 汇总弱化,分清层次 */
+.rec-day-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+.rec-day {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+.rec-day-sum {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.rec-trend {
+  margin-top: 14px;
+}
+.rec-log {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  /* 固定高度(不随记录条数变):多了内部滚,少了留白。明细卡现在在下方,固定高度让整页稳定不滚 */
+  height: 84px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.log-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  /* 占满整行:今日和历史都单列一条,时间在左、水量在右,统一好扫读(不再今日单列/历史双列) */
+  width: 100%;
+  padding: 4px 8px 4px 12px;
+  background: var(--surface);
+  border: 1px solid var(--orb-ring);
+  border-radius: 999px;
+  font-size: 11px;
+  height: 28px;
+  box-shadow: 0 1px 2px rgba(31, 90, 150, 0.06);
+}
+.lp-time {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.lp-ml {
+  font-weight: 700;
+  color: var(--water-deep);
+  /* 推到右侧:时间左对齐、水量右对齐(删除×紧随其后),整行像流水账更清楚 */
+  margin-left: auto;
+}
+.lp-del {
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 50%;
+  padding: 0;
+}
+.lp-del:hover {
+  background: rgba(229, 72, 77, 0.15);
+  color: var(--danger);
+}
+
+/* ---------- 视图切换 ---------- */
+.view {
+  height: 100%;
+}
+.view.hidden {
+  display: none;
+}
+
+/* ---------- 主视图顶部导航 ---------- */
+.head {
+  align-items: center;
+}
+.head-title .title {
+  line-height: 1.1;
+}
+.head-actions {
+  display: flex;
+  gap: 4px;
+  margin-right: -6px;
+}
+.icon-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s var(--ease), color 0.15s var(--ease);
+}
+.icon-btn:hover {
+  background: rgba(95, 125, 158, 0.12);
+  color: var(--text);
+}
+.icon-close:hover {
+  background: rgba(229, 72, 77, 0.12);
+  color: var(--danger);
+}
+.icon-btn svg {
+  width: 17px;
+  height: 17px;
+}
+
+/* ---------- 子页面(统计/设置) ---------- */
+.sub-panel {
+  justify-content: flex-start;
+  overflow-y: auto;
+  padding-top: 0; /* 顶部留白交给吸顶的 sub-head 自己带,避免滚动时内容从标题上方缝隙露出 */
+}
+/* 返回按钮所在标题栏吸顶:设置内容多需要滚动时,返回入口始终可见;全宽磨砂,和主页顶栏一致 */
+.sub-head {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  width: calc(100% + 36px);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 18px 10px;
+  margin-bottom: 10px;
+  background: var(--bg-top);
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.25s var(--ease);
+}
+/* 和主页顶栏完全一致:不透明实心,下滑才淡入一条极细分隔线 */
+.sub-head.scrolled {
+  border-bottom-color: rgba(31, 90, 150, 0.1);
+}
+.back-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 22px;
+  line-height: 1;
+  color: var(--text-muted);
+  transition: background 0.15s var(--ease), color 0.15s var(--ease);
+}
+.back-btn:hover {
+  background: rgba(95, 125, 158, 0.12);
+  color: var(--text);
+}
+.sub-title {
+  flex: 1;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+/* ---------- 统计 ---------- */
+.range-toggle {
+  display: flex;
+  background: var(--orb-empty);
+  border-radius: 8px;
+  padding: 2px;
+}
+.range-toggle button {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 11px;
+  padding: 4px 9px;
+  border-radius: 6px;
+  color: var(--text-muted);
+  transition: all 0.15s var(--ease);
+}
+.range-toggle button.active {
+  background: var(--surface);
+  color: var(--water-deep);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+.streak {
+  width: 100%;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+.streak b {
+  color: var(--water-deep);
+  font-size: 14px;
+}
+.chart {
+  width: 100%;
+}
+.chart-grid {
+  position: relative;
+  width: 100%;
+  /* 拔高到接近月历 6 行的高度:7天/30天 和月历两个模式高度相近,切换时上下两块几乎不跳 */
+  height: 196px;
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  border-bottom: 1px solid var(--orb-ring);
+}
+.chart-x {
+  display: flex;
+  gap: 3px;
+  margin-top: 5px;
+}
+.chart-x span {
+  flex: 1;
+  text-align: center;
+  font-size: 9px;
+  color: var(--text-muted);
+}
+.goal-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 0;
+  border-top: 1px dashed var(--water);
+  opacity: 0.75;
+  z-index: 2;
+}
+.goal-line span {
+  position: absolute;
+  right: 0;
+  top: -13px;
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--water-deep);
+  background: var(--scrim);
+  padding: 0 3px;
+  border-radius: 4px;
+}
+.bar-col {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 3px;
+  cursor: pointer; /* 柱子可点开看当天明细 */
+}
+.bar {
+  width: 100%;
+  max-width: 16px;
+  height: 0;
+  border-radius: 4px 4px 0 0;
+  background: var(--orb-ring);
+  transition: height 0.5s var(--ease-spring);
+}
+.bar.reached {
+  background: linear-gradient(180deg, var(--water-light), var(--water));
+}
+/* 当前正在查看的那天:柱子加一圈描边高亮 */
+.bar.selected {
+  box-shadow: 0 0 0 2px var(--water-deep);
+}
+.bar-val {
+  font-size: 9px;
+  color: var(--water-deep);
+  font-variant-numeric: tabular-nums;
+  height: 12px;
+  line-height: 12px;
+}
+.chart-tip {
+  width: 100%;
+  text-align: center;
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 10px;
+}
+
+/* ---------- 设置表单 ---------- */
+.form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+/* 字段标题行:文字在左、附带的小按钮(如「全天」)在右,不挤进下面的输入行 */
+.field-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+/* 兜底:设置内容一律不横向溢出 */
+.sub-panel {
+  overflow-x: hidden;
+}
+.set-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  background: var(--orb-empty);
+  padding: 8px 10px;
+  border-radius: 8px;
+}
+.amts-row {
+  display: flex;
+  gap: 6px;
+}
+.amts-row input {
+  flex: 1;
+  min-width: 0;
+}
+.goal-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  /* 和输入框拉开点距离,别贴太近(之前 -2px 顶上去了) */
+  margin-top: 5px;
+}
+.field-hint {
+  font-size: 10px;
+  color: var(--text-muted);
+  line-height: 1.4;
+  margin-top: 2px;
+  font-weight: 400;
+}
+/* 告警提示:影响提醒是否生效的文案(午休不生效/静音到次日等),用警示色 + 图标,和普通灰说明分开,不被划过 */
+.field-warn {
+  font-size: 11px;
+  line-height: 1.4;
+  margin-top: 3px;
+  color: var(--danger);
+  font-weight: 600;
+}
+.field-warn::before {
+  content: '⚠ ';
+}
+.field-warn:empty {
+  display: none;
+}
+.set-saved {
+  font-size: 11px;
+  color: var(--water-deep);
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.2s var(--ease);
+}
+.set-saved.show {
+  opacity: 1;
+}
+.rec-clear {
+  border: 1px solid var(--orb-ring);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 11px;
+  padding: 3px 9px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.15s var(--ease), color 0.15s var(--ease);
+}
+.rec-clear:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+.rec-clear.armed {
+  border-color: var(--danger);
+  background: var(--danger);
+  color: #fff;
+}
+/* 查看过去某天时的「返回今天」:中性蓝,和「清零今天」的红色危险按钮区分开 */
+.rec-day-back {
+  border: 1px solid var(--water);
+  background: rgba(59, 158, 255, 0.08);
+  color: var(--water-deep);
+  font-size: 11px;
+  padding: 3px 9px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s var(--ease);
+}
+.rec-day-back:hover {
+  background: rgba(59, 158, 255, 0.16);
+}
+.form label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 12px;
+  /* 行标签是主文字(iOS/mac 惯例:标签清晰、说明才灰),深色下不再发灰看不清 */
+  color: var(--text);
+  font-weight: 600;
+}
+.form input[type='number'],
+.form input[type='time'] {
+  height: 32px;
+  border: 1px solid var(--orb-ring);
+  border-radius: 9px;
+  padding: 0 10px;
+  font-size: 14px;
+  color: var(--text);
+  /* 卡片里的输入框用淡底(不是纯白/纯卡片色),在白卡上有 inset 层次,不发平 */
+  background: var(--surface-3);
+  outline: none;
+  transition: border-color 0.15s var(--ease), box-shadow 0.15s var(--ease);
+}
+.form input:focus {
+  border-color: var(--water);
+  box-shadow: 0 0 0 3px rgba(124, 196, 255, 0.4);
+}
+/* 全天提醒开启时,时间框置灰(无视它们,但值保留) */
+.form input:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  background: var(--orb-empty);
+}
+/* 提醒时段:开始/结束各占一行,时间框占满整行,AM/PM 与时钟图标不被裁切(Apple 时间段排法) */
+.time-pair {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.time-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.time-line .tl-label {
+  flex: none;
+  width: 30px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.time-line input {
+  flex: 1;
+  min-width: 0;
+}
+.switch-row {
+  flex-direction: row !important;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px !important;
+  color: var(--text) !important;
+}
+.switch {
+  position: relative;
+  width: 40px;
+  height: 24px;
+  flex: none;
+}
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.switch .slider {
+  position: absolute;
+  inset: 0;
+  background: var(--orb-ring);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.2s var(--ease);
+}
+.switch .slider::before {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 3px;
+  width: 18px;
+  height: 18px;
+  /* 开关圆钮固定亮色(深浅两色下都是标准的白钮),不跟 --surface 变深、免得深色里钮融进轨道 */
+  background: #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s var(--ease-spring);
+}
+.switch input:checked + .slider {
+  background: var(--water);
+}
+.switch input:checked + .slider::before {
+  transform: translateX(16px);
+}
+.save-btn {
+  margin-top: 4px;
+  border: none;
+  border-radius: 11px;
+  padding: 11px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, var(--water-light), var(--water));
+  box-shadow: var(--shadow-btn);
+  cursor: pointer;
+  transition: filter 0.15s var(--ease), box-shadow 0.2s var(--ease);
+}
+.save-btn:hover {
+  filter: brightness(1.04);
+  box-shadow: var(--shadow-btn-hover);
+}
+.save-btn:active {
+  filter: brightness(0.97);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .add-btn,
+  .undo-btn,
+  .orb-ring,
+  .bar,
+  .switch .slider,
+  .switch .slider::before {
+    transition: none;
+  }
+  .guide-overlay,
+  .guide-card {
+    transition: opacity 0.15s linear;
+  }
+  .guide-card,
+  .guide-overlay.shown .guide-card,
+  .guide-overlay.leaving .guide-card {
+    transform: none;
+  }
+}
+
+/* ---------- 新手引导覆盖层(首启一次) ---------- */
+.guide-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: var(--guide-card-bg);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  opacity: 0;
+  transition: opacity 0.3s var(--ease);
+}
+.guide-overlay.shown {
+  opacity: 1;
+}
+.guide-overlay.leaving {
+  opacity: 0;
+  transition: opacity 0.2s var(--ease); /* 出场略快 */
+}
+.guide-card {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--orb-ring);
+  border-radius: 18px;
+  padding: 22px 18px 18px;
+  box-shadow: 0 12px 30px rgba(31, 90, 150, 0.18);
+  text-align: center;
+  opacity: 0;
+  transform: scale(0.94);
+  transform-origin: center;
+  /* 进场:从中心柔和放大+淡入(略带回弹) */
+  transition: transform 0.34s var(--ease-spring), opacity 0.28s var(--ease);
+}
+.guide-overlay.shown .guide-card {
+  opacity: 1;
+  transform: scale(1);
+}
+.guide-overlay.leaving .guide-card {
+  /* 出场:快速缩小+淡出 */
+  opacity: 0;
+  transform: scale(0.97);
+  transition: transform 0.2s var(--ease), opacity 0.18s var(--ease);
+}
+.guide-drop {
+  font-size: 34px;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+.guide-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+}
+.guide-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 4px;
+  margin-bottom: 14px;
+}
+.guide-list {
+  list-style: none;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  margin-bottom: 18px;
+}
+.guide-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.guide-list .gi {
+  flex: none;
+  font-size: 16px;
+  line-height: 1.35;
+}
+.guide-list .gt {
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: var(--text);
+}
+.guide-note {
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--text-muted);
+  background: var(--water-subtle, rgba(56, 132, 255, 0.08));
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-bottom: 14px;
+  text-align: left;
+}
+.guide-cta {
+  width: 100%;
+  border: none;
+  border-radius: 12px;
+  padding: 11px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, var(--water-light), var(--water));
+  box-shadow: var(--shadow-btn);
+  cursor: pointer;
+  transition: filter 0.15s var(--ease), box-shadow 0.2s var(--ease);
+}
+.guide-cta:hover {
+  filter: brightness(1.04);
+  box-shadow: var(--shadow-btn-hover);
+}
+.guide-cta:active {
+  filter: brightness(0.97);
+}
+
+/* 设置分区标题:把一长条设置按主题分组,降低扫描成本 */
+/* iOS/macOS 分组风:小标题在卡片上方(纯文字),内容包进一张圆角卡片,块与块明显分开 */
+.set-section {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  margin: 16px 0 7px;
+  padding-left: 4px;
+}
+.form > .set-section:first-child {
+  margin-top: 2px;
+}
+.set-group {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  background: var(--surface);
+  border: 1px solid var(--orb-ring);
+  border-radius: 14px;
+  padding: 13px 13px 14px;
+  box-shadow: 0 2px 8px rgba(31, 90, 150, 0.07);
+}
+
+/* 应用内确认/提示弹窗(替代原生 confirm/alert),跟随深浅色 */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(6, 10, 14, 0.42);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  opacity: 0;
+  transition: opacity 0.2s var(--ease);
+}
+.modal-overlay.shown {
+  opacity: 1;
+}
+.modal-overlay.leaving {
+  opacity: 0;
+}
+.modal-card {
+  width: 100%;
+  max-width: 258px;
+  background: var(--surface);
+  border: 1px solid var(--orb-ring);
+  border-radius: 16px;
+  padding: 18px 16px 14px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.32);
+  transform: scale(0.94);
+  transition: transform 0.22s var(--ease-spring);
+}
+.modal-overlay.shown .modal-card {
+  transform: scale(1);
+}
+.modal-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+.modal-msg {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  margin-bottom: 14px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.modal-actions {
+  display: flex;
+  gap: 8px;
+}
+.modal-btn {
+  flex: 1;
+  border: none;
+  border-radius: 9px;
+  padding: 9px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: filter 0.15s var(--ease), background 0.15s var(--ease), color 0.15s var(--ease);
+}
+.modal-cancel {
+  background: var(--surface-3);
+  color: var(--text-muted);
+}
+.modal-cancel:hover {
+  color: var(--text);
+}
+.modal-confirm {
+  background: var(--water);
+  color: #fff;
+}
+.modal-confirm:hover {
+  filter: brightness(1.06);
+}
+.modal-confirm.danger {
+  background: var(--danger);
+}
+
+/* 撤销 toast:底部居中,带「撤销」按钮,深浅两色都用深底白字 */
+.undo-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 20px;
+  transform: translate(-50%, 12px);
+  z-index: 62;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: calc(100% - 32px);
+  background: rgba(20, 58, 94, 0.96);
+  color: #fff;
+  font-size: 12.5px;
+  padding: 9px 10px 9px 14px;
+  border-radius: 11px;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.3);
+  opacity: 0;
+  transition: opacity 0.2s var(--ease), transform 0.2s var(--ease);
+}
+.undo-toast.shown {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+.ut-undo {
+  flex: none;
+  border: none;
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 5px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s var(--ease);
+}
+.ut-undo:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+@media (prefers-reduced-motion: reduce) {
+  .modal-card {
+    transition: none;
+    transform: none;
+  }
+}
+
+/* 月历热力视图:按日期铺开,每天按达标情况上色,点某天看明细 */
+.cal {
+  width: 100%;
+}
+.cal-head {
+  position: relative; /* 给年月选择弹层定位 */
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+.cal-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+/* 标题(2026年7月)点任意处开自定义中文年月选择器 */
+.cal-title {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 6px;
+}
+.cal-title:hover {
+  background: var(--surface-3);
+}
+.cal-today-btn {
+  flex: none;
+  border: 1px solid var(--orb-ring);
+  background: var(--surface);
+  color: var(--water-deep);
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.15s var(--ease);
+}
+.cal-today-btn:hover {
+  border-color: var(--water-light);
+}
+/* 自定义年月选择弹层 */
+.month-picker {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 4px;
+  z-index: 20;
+  width: 208px;
+  background: var(--surface);
+  border: 1px solid var(--orb-ring);
+  border-radius: 12px;
+  padding: 10px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.22);
+}
+.mp-year {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.mp-year-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+.mp-nav {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--orb-ring);
+  background: var(--surface);
+  color: var(--text-muted);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+}
+.mp-nav-off {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.mp-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.mp-cell {
+  border: 1px solid transparent;
+  background: var(--surface-3);
+  color: var(--text);
+  font-size: 12px;
+  padding: 7px 0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.15s var(--ease);
+}
+.mp-cell:hover:not(:disabled) {
+  border-color: var(--water-light);
+}
+.mp-cell:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+.mp-sel {
+  background: var(--water);
+  color: #fff;
+  font-weight: 700;
+}
+.cal-nav {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--orb-ring);
+  background: var(--surface);
+  color: var(--text-muted);
+  border-radius: 8px;
+  font-size: 15px;
+  cursor: pointer;
+  transition: color 0.15s var(--ease), border-color 0.15s var(--ease);
+}
+.cal-nav:hover {
+  color: var(--water-deep);
+  border-color: var(--water-light);
+}
+.cal-nav-off,
+.cal-nav-off:hover {
+  opacity: 0.35;
+  cursor: not-allowed;
+  color: var(--text-muted);
+  border-color: var(--orb-ring);
+}
+.cal-week {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-bottom: 4px;
+}
+.cal-week span {
+  text-align: center;
+  font-size: 10px;
+  color: var(--text-muted);
+}
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+.cal-cell {
+  height: 28px; /* 固定行高(不用 aspect-ratio):6 行的月份(如 5月/去年11月)也放得下、不出滚动条 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: var(--text);
+  border-radius: 8px;
+  background: var(--surface-3);
+  border: 1px solid transparent;
+  transition: border-color 0.15s var(--ease);
+}
+.cal-empty {
+  background: transparent;
+}
+.cal-partial {
+  background: rgba(59, 158, 255, 0.28);
+}
+.cal-reached {
+  background: var(--water);
+  color: #fff;
+  font-weight: 700;
+}
+.cal-future {
+  background: transparent;
+  color: var(--text-muted);
+  opacity: 0.4;
+}
+.cal-today {
+  outline: 2px solid var(--water-deep);
+  outline-offset: -2px;
+}
+.cal-sel {
+  border-color: var(--water-deep);
+}
+.cal-cell[data-date] {
+  cursor: pointer;
+}
+.cal-cell[data-date]:hover {
+  border-color: var(--water-light);
+}
+
+/* 记录页固定满屏布局:上面图表/日历区填满剩余空间,下面当日记录固定高度 —— 切模式/切月份都不动、无空缺、不滚 */
+#view-records .panel {
+  overflow: hidden;
+}
+.rec-viz {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.rec-viz .rec-trend {
+  margin-top: 0;
+}
+.rec-detail {
+  flex: none;
+}
+.rec-viz .chart,
+.rec-viz .cal {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.rec-viz .chart-grid {
+  flex: 1;
+  height: auto;
+  min-height: 120px;
+}
+.rec-viz .cal-grid {
+  flex: 1;
+  min-height: 0;
+  grid-auto-rows: 1fr;
+}
+.rec-viz .cal-cell {
+  height: auto;
+}
+
+/* 记录页上下比例重配:日历区略多、当日记录区给足空间(不再日历独大);记录白条固定高不被压扁 */
+.rec-viz {
+  flex: 6;
+}
+.rec-detail {
+  flex: 5;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.rec-detail .rec-log {
+  flex: 1;
+  height: auto;
+  min-height: 0;
+}
+.rec-detail .log-pill {
+  flex-shrink: 0; /* 白条永远同高,记录多了框内部滚,而不是把每条压矮 */
+}
+
+/* 当日记录列表更紧凑:白条压矮、间距收紧、×缩小 —— 像常规日志行,一屏看更多、不再一条条像大块 */
+.rec-detail .rec-log {
+  gap: 5px;
+}
+.rec-detail .log-pill {
+  height: 24px;
+  padding: 0 8px 0 12px;
+}
+.rec-detail .lp-del {
+  width: 22px;
+  height: 22px;
+}
+
+/* 记录区再给多一点(和日历对半),典型天数的记录基本不用滚、末条不被切;滚动时末条留一点余量 */
+.rec-detail {
+  flex: 6;
+}
+.rec-detail .rec-log {
+  padding-bottom: 4px;
+}
+/* 子页顶栏(记录/设置)标题与内容间距收窄一点,原来偏空;主页用的是 .head,不受影响 */
+.sub-head {
+  margin-bottom: 5px;
+  padding-bottom: 6px;
+}
+
+/* 目标标签背景改不透明并提层级,即便某天柱顶数字靠近也不透字重叠 */
+.goal-line span {
+  z-index: 3;
+  background: #eaf2fb;
+}
+@media (prefers-color-scheme: dark) {
+  .goal-line span {
+    background: #101820;
+  }
+}

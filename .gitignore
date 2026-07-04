@@ -1,0 +1,15 @@
+node_modules/
+out/
+dist/
+release/
+*.log
+*.tsbuildinfo
+.DS_Store
+
+# 根目录构建泄漏物(electron-vite 偶尔会把 bundle 输出到根目录)
+/index.js
+/index-*.js
+
+# 内部开发文档,本地保留、不进公开仓库
+/CLAUDE.md
+/WORKLOG.md

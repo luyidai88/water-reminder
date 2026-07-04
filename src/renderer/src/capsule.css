@@ -1,0 +1,190 @@
+:root {
+  --water-light: #7cc4ff;
+  --water: #3b9eff;
+  --water-deep: #1f7fe0;
+  --ring-track: rgba(31, 127, 224, 0.14);
+  --text: #143a5e;
+  --muted: #4d6884;
+  --cap-bg: rgba(255, 255, 255, 0.9);
+  --cap-border: rgba(255, 255, 255, 0.7);
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+/* 跟随系统深色:悬浮胶囊在深色下换深底浅字 */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --water-deep: #5fb0ff;
+    --text: #e7eff7;
+    --muted: #93a7bd;
+    --ring-track: rgba(120, 180, 255, 0.18);
+    --cap-bg: rgba(30, 41, 53, 0.92);
+    --cap-border: rgba(255, 255, 255, 0.08);
+  }
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  background: transparent;
+  overflow: hidden;
+  -webkit-user-select: none;
+  user-select: none;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
+    'Microsoft YaHei', sans-serif;
+  color: var(--text);
+}
+
+#capsule {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+}
+
+/* 入场:轻轻浮起 */
+.cap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 52px;
+  padding: 0 16px 0 8px;
+  border-radius: 999px;
+  background: var(--cap-bg);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--cap-border);
+  box-shadow: 0 6px 18px rgba(31, 90, 150, 0.2), 0 1px 2px rgba(31, 90, 150, 0.1);
+  cursor: pointer;
+  transition: transform 0.25s var(--spring), box-shadow 0.25s var(--ease),
+    opacity 0.25s var(--ease);
+  animation: capIn 0.45s var(--spring) both;
+}
+
+@keyframes capIn {
+  from {
+    transform: translateY(10px) scale(0.92);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+.cap:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 22px rgba(31, 90, 150, 0.26);
+}
+
+.cap:active {
+  transform: scale(0.97);
+}
+
+.ring-wrap {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  flex: none;
+}
+
+.ring {
+  width: 40px;
+  height: 40px;
+  display: block;
+}
+
+.ring-track {
+  fill: none;
+  stroke: var(--ring-track);
+  stroke-width: 4;
+}
+
+.ring-prog {
+  fill: none;
+  stroke: var(--water);
+  stroke-width: 4;
+  stroke-linecap: round;
+  transition: stroke 0.3s var(--ease);
+}
+
+.drop {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+.drop-ico {
+  width: 1.25em;
+  height: 1.25em;
+  display: inline-block;
+  vertical-align: middle;
+}
+.drop-ico path {
+  fill: var(--water);
+}
+
+.info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 56px;
+}
+
+.label {
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 0.3px;
+}
+
+.count {
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.cap.paused {
+  opacity: 0.72;
+}
+.cap.paused .ring-prog {
+  stroke: var(--muted);
+}
+
+.cap.reached .ring-prog {
+  stroke: var(--water);
+}
+
+.cap.active {
+  animation: capPulse 1.6s var(--ease) infinite;
+}
+.cap.active .count {
+  color: var(--water-deep);
+}
+
+@keyframes capPulse {
+  0%,
+  100% {
+    box-shadow: 0 6px 16px rgba(59, 158, 255, 0.3);
+  }
+  50% {
+    box-shadow: 0 6px 22px rgba(59, 158, 255, 0.5);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cap,
+  .cap.active {
+    animation: none;
+    transition: none;
+  }
+}

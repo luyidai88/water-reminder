@@ -1,0 +1,290 @@
+:root {
+  --water-light: #7cc4ff;
+  --water: #3b9eff;
+  --water-deep: #1f7fe0;
+  --orb-ring: #cfe6fb;
+  --text: #143a5e;
+  --muted: #4d6884;
+  --surface: #ffffff;
+  --surface-2: #f6fbff;
+  --surface-3: #eef6ff;
+  --card-bg: rgba(255, 255, 255, 0.97);
+  --card-border: rgba(255, 255, 255, 0.8);
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --shadow-btn: 0 6px 16px rgba(59, 158, 255, 0.35);
+}
+/* 跟随系统深色:提醒卡在深色下换深底浅字,夜里弹出不刺眼 */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --water-deep: #5fb0ff;
+    --orb-ring: #33475a;
+    --text: #e7eff7;
+    --muted: #93a7bd;
+    --surface: #1e2935;
+    --surface-2: #26313d;
+    --surface-3: #2c3948;
+    --card-bg: rgba(30, 41, 53, 0.97);
+    --card-border: rgba(255, 255, 255, 0.08);
+  }
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  background: transparent;
+  overflow: hidden;
+  -webkit-user-select: none;
+  user-select: none;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
+    'Microsoft YaHei', sans-serif;
+  color: var(--text);
+}
+
+#card {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+}
+
+/* 安静浮出:spring 上浮 + 缩放,退场更快 */
+.card {
+  width: 100%;
+  padding: 14px 16px 16px;
+  border-radius: 18px;
+  background: var(--card-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--card-border);
+  box-shadow: 0 8px 22px rgba(31, 90, 150, 0.18), 0 2px 6px rgba(31, 90, 150, 0.1);
+  transform: translateY(14px) scale(0.96);
+  opacity: 0;
+  transform-origin: bottom center;
+  transition: transform 0.34s var(--spring), opacity 0.3s var(--ease);
+}
+
+.card.shown {
+  transform: none;
+  opacity: 1;
+}
+
+.card.leaving {
+  transition: transform 0.2s ease-in, opacity 0.2s ease-in;
+  transform: translateY(8px) scale(0.98);
+  opacity: 0;
+}
+
+.card-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.card-top .drop {
+  font-size: 24px;
+  flex: none;
+  line-height: 0;
+}
+.drop-ico {
+  width: 26px;
+  height: 26px;
+  display: inline-block;
+  vertical-align: middle;
+}
+.drop-ico path {
+  fill: var(--water);
+}
+
+.texts {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.title {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.sub {
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.btn-primary {
+  width: 100%;
+  border: none;
+  border-radius: 12px;
+  padding: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, var(--water-light), var(--water));
+  box-shadow: var(--shadow-btn);
+  cursor: pointer;
+  transition: filter 0.15s var(--ease), transform 0.12s var(--spring),
+    box-shadow 0.2s var(--ease);
+}
+
+.btn-primary span {
+  font-size: 11px;
+  opacity: 0.85;
+  font-weight: 600;
+}
+
+.btn-primary:hover {
+  filter: brightness(1.05);
+  box-shadow: 0 10px 22px rgba(59, 158, 255, 0.45);
+}
+
+.btn-primary:active {
+  transform: scale(0.97);
+}
+
+.btn-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.btn-ghost {
+  flex: 1;
+  border: 1px solid var(--orb-ring);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 12px;
+  padding: 8px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color 0.15s var(--ease), color 0.15s var(--ease),
+    background 0.15s var(--ease);
+}
+
+.btn-ghost:hover {
+  border-color: var(--water-light);
+  color: var(--text);
+  background: var(--surface-2);
+}
+
+.btn-ghost:active {
+  background: var(--surface-3);
+}
+
+.btn-ghost.muted {
+  color: #9fb3c8;
+}
+/* 长暂停做成次级文字链接行:比「稍后/跳过」更轻,拉开更大距离并加分隔线,避免误点成跳过 */
+/* 两端对齐:提示词贴左(与上方按钮左缘对齐),两个暂停操作成组贴右(与上方按钮右缘对齐) */
+.pause-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: nowrap;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--orb-ring);
+}
+.pause-line-label {
+  font-size: 11px;
+  color: #9fb3c8;
+  flex: none;
+  white-space: nowrap;
+}
+.pause-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.pause-link {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 11px;
+  padding: 4px 4px;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s var(--ease), background 0.15s var(--ease);
+}
+.pause-link:hover {
+  color: var(--water-deep);
+  background: rgba(59, 158, 255, 0.1);
+}
+/* 「今天不再提醒」点一次进入确认态:变橙色实心,提示再点才真的生效 */
+.pause-link.armed {
+  color: #fff;
+  background: #ef9d3a;
+  font-weight: 600;
+}
+/* 鼠标点按不显焦点框,键盘导航(:focus-visible)必须显 —— a11y */
+button:focus {
+  outline: none;
+}
+button:focus-visible {
+  outline: 2px solid var(--water-deep);
+  outline-offset: 2px;
+}
+
+.card-amts {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+.camt {
+  flex: 1;
+  border: 1px solid var(--orb-ring);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 12px;
+  padding: 7px 0;
+  border-radius: 9px;
+  cursor: pointer;
+  transition: border-color 0.15s var(--ease), color 0.15s var(--ease),
+    background 0.15s var(--ease), transform 0.1s var(--ease);
+}
+.camt:hover {
+  border-color: var(--water-light);
+  color: var(--text);
+  background: var(--surface-2);
+}
+.camt:active {
+  transform: scale(0.94);
+  background: var(--surface-3);
+}
+.camt small {
+  font-size: 9px;
+  opacity: 0.6;
+  margin-left: 1px;
+}
+.card-top {
+  -webkit-app-region: drag;
+}
+.btn-primary,
+.camt,
+.btn-ghost {
+  -webkit-app-region: no-drag;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* 覆盖入场/出场态(.shown/.leaving 优先级更高,只盖基础 .card 会漏,关卡片仍会位移) */
+  .card,
+  .card.shown,
+  .card.leaving {
+    transform: none;
+    transition: opacity 0.12s linear;
+  }
+  .btn-primary {
+    transition: filter 0.15s linear;
+  }
+}
