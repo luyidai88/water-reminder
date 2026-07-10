@@ -95,7 +95,8 @@ async function pauseWithFeedback(msg: string, action: () => Promise<unknown>): P
 
 // 只刷新身体(今天/目标/百分比/快捷量),不动标题、不重播入场、不响声 —— 数据变了同步用
 function renderBody(st: CardBody): void {
-  subEl.textContent = `今天 ${st.todayMl}/${st.goalMl}ml · 已完成 ${Math.round((st.todayMl / st.goalMl) * 100)}%`
+  const pct = st.todayMl >= st.goalMl ? 100 : Math.min(99, Math.round((st.todayMl / st.goalMl) * 100))
+  subEl.textContent = `今天 ${st.todayMl}/${st.goalMl}ml · 已完成 ${pct}%`
   cupTag.textContent = `+${st.cupMl}ml`
   const amtsEl = document.getElementById('cardAmts')!
   amtsEl.innerHTML = st.amounts

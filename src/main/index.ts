@@ -173,25 +173,9 @@ function goalForDay(key: string): number {
 function goalForToday(): number {
   return store.get('settings').dailyGoalMl
 }
-
-function dateKeyOffset(offset: number): string {
-  const d = new Date()
-  d.setDate(d.getDate() - offset)
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
-}
-
-// 连续达标天数:今天达标则计入今天;今天未达标不算"断",从昨天往前数连续达标
-function calcStreak(): number {
-  const logs = store.get('logs')
-  let streak = 0
-  if (getDay(todayKey()).totalMl >= goalForToday()) streak++
-  for (let i = 1; ; i++) {
-    const key = dateKeyOffset(i)
-    const total = logs[key]?.totalMl ?? 0
-    if (total >= goalForDay(key)) streak++
-    else break
-  }
-  return streak
+// 是否达标:必须真喝过水(total>0)且达到目标。全 app 唯一口径,主面板/柱状/月历/倒计时都调它,避免走出两套判定
+function isReached(total: number, goal: number): boolean {
+  return total > 0 && total >= goal
 }
 
 // 某个月的每日数据(月历视图用):每天的总量/目标/是否达标/是否今天/是否未来 + 首日星期 + 月汇总
@@ -208,7 +192,6 @@ function getMonth(ym: string): {
     isToday: boolean
     isFuture: boolean
   }[]
-  streak: number
   avgMl: number
   goalMl: number
   reachedCount: number
@@ -226,7 +209,7 @@ function getMonth(ym: string): {
   const todayK = todayKey()
   const days = []
   let sum = 0
-  let elapsed = 0
+  let recorded = 0
   let reachedCount = 0
   for (let d = 1; d <= daysInMonth; d++) {
     const key = `${year}-${pad(month)}-${pad(d)}`
@@ -234,16 +217,16 @@ function getMonth(ym: string): {
     const goal = key === todayK ? s.dailyGoalMl : logs[key]?.goalMl ?? s.dailyGoalMl
     const isFuture = key > todayK
     if (!isFuture) {
-      elapsed++
       sum += total
-      if (total > 0 && total >= goal) reachedCount++
+      if (total > 0) recorded++
+      if (isReached(total, goal)) reachedCount++
     }
     days.push({
       date: key,
       day: d,
       totalMl: total,
       goalMl: goal,
-      reached: total > 0 && total >= goal,
+      reached: isReached(total, goal),
       isToday: key === todayK,
       isFuture
     })
@@ -254,8 +237,7 @@ function getMonth(ym: string): {
     ym: `${year}-${pad(month)}`,
     firstWeekday,
     days,
-    streak: calcStreak(),
-    avgMl: elapsed ? Math.round(sum / elapsed) : 0,
+    avgMl: recorded ? Math.round(sum / recorded) : 0,
     goalMl: s.dailyGoalMl,
     reachedCount,
     canNext: `${year}-${pad(month)}` < curYm // 不给翻到未来月
@@ -271,7 +253,7 @@ function getStats(days: number): {
     goalMl: number
     reached: boolean
   }[]
-  streak: number
+  reachedDays: number
   goalMl: number
   avgMl: number
 } {
@@ -292,11 +274,14 @@ function getStats(days: number): {
       weekday: weekdays[d.getDay()],
       totalMl: total,
       goalMl: dayGoal,
-      reached: total > 0 && total >= dayGoal
+      reached: isReached(total, dayGoal)
     })
   }
-  const avg = arr.length ? Math.round(arr.reduce((a, b) => a + b.totalMl, 0) / arr.length) : 0
-  return { days: arr, streak: calcStreak(), goalMl: s.dailyGoalMl, avgMl: avg }
+  const sum = arr.reduce((a, b) => a + b.totalMl, 0)
+  const recordedDays = arr.filter((d) => d.totalMl > 0).length // 有喝水记录的天数(排除空天)
+  const avg = recordedDays ? Math.round(sum / recordedDays) : 0 // 日均按有记录的天数平均(同 Apple 健康对手动记录类数据),不被空天拉低
+  const reachedDays = arr.filter((d) => d.reached).length // 区间内达标天数,和月历「本月达标」同口径
+  return { days: arr, reachedDays, goalMl: s.dailyGoalMl, avgMl: avg }
 }
 
 let win: BrowserWindow | null = null
@@ -393,7 +378,7 @@ function nextRemindLabel(s: Settings): string {
 function buildCountdown(): CountdownState {
   const s = store.get('settings')
   const todayMl = getDay(todayKey()).totalMl
-  const reached = todayMl >= goalForToday()
+  const reached = isReached(todayMl, goalForToday())
   const resting = !inRemindWindow(s)
   return {
     remainingMs: remainingMsNow(),
@@ -445,7 +430,7 @@ function tick(): void {
     setPaused(false)
   }
   const s = store.get('settings')
-  const reached = getDay(todayKey()).totalMl >= goalForToday()
+  const reached = isReached(getDay(todayKey()).totalMl, goalForToday())
   const doneForDay = reached && s.stopWhenReached
   const nowResting = !inRemindWindow(s)
   // 「休息→提醒」边沿:进入提醒时段那一刻立即给一次首杯提醒,不必白等满一个间隔
@@ -747,7 +732,7 @@ function fireSystemNotification(line: string): void {
 function showCard(): void {
   snoozePending = false // 已经弹出,一次性 snooze 使命完成
   cardVisible = true
-  dueLine = pickLine(getDay(todayKey()).totalMl >= goalForToday())
+  dueLine = pickLine(isReached(getDay(todayKey()).totalMl, goalForToday()))
   presentReminder()
   fireSystemNotification(dueLine)
   pushState()

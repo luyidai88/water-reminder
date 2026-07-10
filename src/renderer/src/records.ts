@@ -112,7 +112,7 @@ export async function renderRecords(
         </div>`
       bottomTip = '点某天看明细 · 深蓝达标 · 浅蓝没达标 · 圈今天'
     } else if (stats) {
-      streakLine = `🔥 连续达标 <b>${stats.streak}</b> 天 · 日均 <b>${stats.avgMl}</b> ml`
+      streakLine = `🔥 近 ${range} 天达标 <b>${stats.reachedDays}</b> 天 · 日均 <b>${stats.avgMl}</b> ml`
       const rawMax = Math.max(...stats.days.map((d) => d.totalMl), stats.goalMl, 1)
       const maxVal = rawMax * 1.12
       const goalPct = Math.round((stats.goalMl / maxVal) * 100)
@@ -128,7 +128,14 @@ export async function renderRecords(
         </div>`
         })
         .join('')
-      const xHtml = stats.days.map((d) => `<span>${range === 7 ? d.weekday : ''}</span>`).join('')
+      const xHtml = stats.days
+        .map((d, i) => {
+          // 7 天标星期;30 天太密,只稀疏标日期(每 5 天 + 最后一天),不然认不出哪根柱子是哪天
+          if (range === 7) return `<span>${d.weekday}</span>`
+          const show = i % 5 === 0 || i === stats.days.length - 1
+          return `<span>${show ? d.label : ''}</span>`
+        })
+        .join('')
       bottomBody = `
         <div class="chart">
           <div class="chart-grid">

@@ -35,7 +35,7 @@ export interface DayStat {
 }
 export interface Stats {
   days: DayStat[]
-  streak: number
+  reachedDays: number
   goalMl: number
   avgMl: number
 }
@@ -53,7 +53,6 @@ export interface MonthData {
   ym: string
   firstWeekday: number
   days: MonthDay[]
-  streak: number
   avgMl: number
   goalMl: number
   reachedCount: number

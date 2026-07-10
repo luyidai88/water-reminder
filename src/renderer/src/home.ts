@@ -381,7 +381,12 @@ export function mountHome(
       waveBack.setAttribute('d', buildWave(level, phaseBack, amp * 0.7, 150))
       waveFront.setAttribute('d', buildWave(level, phaseFront, amp, 110))
       amountEl.textContent = String(Math.round(displayedMl))
-      percentEl.textContent = `已完成 ${Math.round((state.todayMl / state.goalMl) * 100)}%`
+      // 达标前百分比封顶 99%,只有真达标才跳 100%,和「还差 Xml」文案、达标特效同步,不出现「100% 但还差 4ml」
+      percentEl.textContent = `已完成 ${
+        state.todayMl >= state.goalMl
+          ? 100
+          : Math.min(99, Math.round((state.todayMl / state.goalMl) * 100))
+      }%`
 
       const reached = state.todayMl >= state.goalMl
       if (reached && !lastReached) celebrate()
